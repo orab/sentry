@@ -7,7 +7,8 @@ import pickBy from 'lodash/pickBy';
 
 import {DEFAULT_STATS_PERIOD} from 'sentry/constants';
 import {DATE_TIME_KEYS, URL_PARAM} from 'sentry/constants/pageFilters';
-import {PageFilters} from 'sentry/types';
+import PageFiltersStore from 'sentry/stores/pageFiltersStore';
+import {PageFilters, PinnedPageFilter} from 'sentry/types';
 import {getUtcDateString} from 'sentry/utils/dates';
 import localStorage from 'sentry/utils/localStorage';
 
@@ -79,6 +80,16 @@ function makeLocalStorageKey(orgSlug: string) {
   return `global-selection:${orgSlug}`;
 }
 
+type StoredObject = {
+  projects: number[];
+  environments: string[];
+  start: string | null;
+  end: string | null;
+  period: string | null;
+  utc: 'true' | null;
+  pinnedFilters: PinnedPageFilter[];
+};
+
 /**
  * Updates the localstorage page filters data
  *
@@ -90,7 +101,8 @@ function makeLocalStorageKey(orgSlug: string) {
  * save the current project alongside environment to local storage. It's
  * debatable if this is the desired behavior.
  */
-export function setPageFiltersStorage(orgSlug: string, selection: PageFilters) {
+export function setPageFiltersStorage(orgSlug: string) {
+  const {selection, pinnedFilters} = PageFiltersStore.getState();
   const {start: currentStart, end: currentEnd} = selection.datetime;
 
   const start = currentStart ? getUtcDateString(currentStart) : null;
@@ -100,13 +112,14 @@ export function setPageFiltersStorage(orgSlug: string, selection: PageFilters) {
   // XXX(epurkhiser): For legacy reasons the page filter state is stored
   // similarly to how the URL query state is stored, but with different keys
   // (projects, instead of project).
-  const dataToSave = {
+  const dataToSave: StoredObject = {
     projects: selection.projects,
     environments: selection.environments,
     start,
     end,
     period,
     utc: selection.datetime.utc ? 'true' : null,
+    pinnedFilters: Array.from(pinnedFilters),
   };
 
   const localStorageKey = makeLocalStorageKey(orgSlug);
@@ -129,7 +142,7 @@ export function getPageFilterStorage(orgSlug: string) {
     return null;
   }
 
-  let decoded: any;
+  let decoded: StoredObject;
 
   try {
     decoded = JSON.parse(value);
@@ -141,11 +154,11 @@ export function getPageFilterStorage(orgSlug: string) {
     return null;
   }
 
-  const {projects, environments, start, end, period, utc} = decoded;
+  const {projects, environments, start, end, period, utc, pinnedFilters} = decoded;
 
   const state = getStateFromQuery(
     {
-      project: projects,
+      project: projects.map(String),
       environment: environments,
       start,
       end,
@@ -155,7 +168,7 @@ export function getPageFilterStorage(orgSlug: string) {
     {allowAbsoluteDatetime: true}
   );
 
-  return state;
+  return {selection: state, pinnedFilters: new Set(pinnedFilters)};
 }
 
 /**
