@@ -4,7 +4,7 @@ import styled from '@emotion/styled';
 import {openInviteMembersModal} from 'sentry/actionCreators/modal';
 import UserAvatar from 'sentry/components/avatar/userAvatar';
 import CommitLink from 'sentry/components/commitLink';
-import Hovercard from 'sentry/components/hovercard';
+import {Hovercard} from 'sentry/components/hovercard';
 import Link from 'sentry/components/links/link';
 import {PanelItem} from 'sentry/components/panels';
 import TextOverflow from 'sentry/components/textOverflow';
